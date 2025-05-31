@@ -6,6 +6,7 @@
  * @FilePath: \life_view\backend\src\example.cc
  */
 #include "example.h"
+
 using namespace std;
 int example::add(int x, int y) {
   return (x + y);

@@ -7,5 +7,12 @@
   },
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "cmake.sourceDirectory": "D:/Project/life_view/backend",
+  "files.associations": {
+    "iostream": "cpp",
+    "mutex": "cpp",
+    "initializer_list": "cpp",
+    "functional": "cpp"
   }
 }
