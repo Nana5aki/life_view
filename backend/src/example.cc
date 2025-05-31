@@ -29,5 +29,12 @@ Napi::Number example::addWrapped(const Napi::CallbackInfo& info) {
 Napi::Object example::Init(Napi::Env env, Napi::Object exports) {
   // export Napi function
   exports.Set("add", Napi::Function::New(env, example::addWrapped));
+  
+  // 初始化MVVM框架
+  mvvm::InitMVVM(env, exports);
+  
+  // 初始化业务示例
+  counter_example::InitCounterExample();
+  
   return exports;
 }
