@@ -1,8 +1,8 @@
-import MVVMDemo from './components/MVVMDemo'
+import CounterView from './components/CounterView'
 import './components/MVVMDemo.css'
 
 function App(): React.JSX.Element {
-  return <MVVMDemo />
+  return <CounterView />
 }
 
 export default App

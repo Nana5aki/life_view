@@ -7,7 +7,7 @@ const CounterView: React.FC = () => {
   const [customNumber, setCustomNumber] = useState('')
 
   const counterViewModel = viewModels.counter
-  
+
   if (!isConnected) {
     return <div className="loading">连接MVVM框架中...</div>
   }
@@ -21,26 +21,26 @@ const CounterView: React.FC = () => {
   const message = properties?.message || ''
   const isEven = properties?.isEven || false
 
-  const handleIncrement = () => {
+  const handleIncrement = (): void => {
     executeAction('counter', 'increment')
   }
 
-  const handleDecrement = () => {
+  const handleDecrement = (): void => {
     executeAction('counter', 'decrement')
   }
 
-  const handleReset = () => {
+  const handleReset = (): void => {
     executeAction('counter', 'reset')
   }
 
-  const handleSetMessage = () => {
+  const handleSetMessage = (): void => {
     if (customMessage.trim()) {
       executeAction('counter', 'setMessage', customMessage)
       setCustomMessage('')
     }
   }
 
-  const handleAddNumber = () => {
+  const handleAddNumber = (): void => {
     const number = parseInt(customNumber)
     if (!isNaN(number)) {
       executeAction('counter', 'addNumber', number)
@@ -51,7 +51,7 @@ const CounterView: React.FC = () => {
   return (
     <div className="counter-view">
       <h2>MVVM计数器示例</h2>
-      
+
       {/* 显示状态 */}
       <div className="status-section">
         <div className="status-item">
@@ -122,8 +122,10 @@ const CounterView: React.FC = () => {
       <div className="info-section">
         <h3>可用操作</h3>
         <div className="actions-list">
-          {counterViewModel.actions.map(action => (
-            <span key={action} className="action-tag">{action}</span>
+          {counterViewModel.actions.map((action) => (
+            <span key={action} className="action-tag">
+              {action}
+            </span>
           ))}
         </div>
       </div>
@@ -131,4 +133,4 @@ const CounterView: React.FC = () => {
   )
 }
 
-export default CounterView 
+export default CounterView

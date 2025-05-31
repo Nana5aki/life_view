@@ -1,3 +1,10 @@
+/*
+ * @Author: Nana5aki
+ * @Date: 2025-05-31 18:11:43
+ * @LastEditors: Nana5aki
+ * @LastEditTime: 2025-05-31 18:30:29
+ * @FilePath: \life_view\src\main\mvvm-handler.ts
+ */
 import { ipcMain, BrowserWindow } from 'electron'
 import { join } from 'path'
 
@@ -55,16 +62,19 @@ export function initMVVMHandlers(): void {
   })
 
   // 执行ViewModel Action
-  ipcMain.handle('mvvm-execute-action', async (event, viewModelName: string, actionName: string, ...args: any[]) => {
-    try {
-      console.log(`Executing action: ${viewModelName}.${actionName}`, args)
-      const result = addon.executeAction(viewModelName, actionName, ...args)
-      return { success: true, result }
-    } catch (error) {
-      console.error('Failed to execute action:', error)
-      throw error
+  ipcMain.handle(
+    'mvvm-execute-action',
+    async (event, viewModelName: string, actionName: string, ...args: any[]) => {
+      try {
+        console.log(`Executing action: ${viewModelName}.${actionName}`, args)
+        const result = addon.executeAction(viewModelName, actionName, ...args)
+        return { success: true, result }
+      } catch (error) {
+        console.error('Failed to execute action:', error)
+        throw error
+      }
     }
-  })
+  )
 
   // 获取ViewModel状态
   ipcMain.handle('mvvm-get-state', async (event, viewModelName: string) => {
@@ -90,4 +100,4 @@ export function initMVVMHandlers(): void {
   })
 
   console.log('MVVM IPC handlers initialized')
-} 
+}

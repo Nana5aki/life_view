@@ -1,3 +1,10 @@
+/*
+ * @Author: Nana5aki
+ * @Date: 2025-05-30 21:21:48
+ * @LastEditors: Nana5aki
+ * @LastEditTime: 2025-05-31 18:30:38
+ * @FilePath: \life_view\src\main\index.ts
+ */
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
