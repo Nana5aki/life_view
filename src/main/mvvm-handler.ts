@@ -2,102 +2,164 @@
  * @Author: Nana5aki
  * @Date: 2025-05-31 18:11:43
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-05-31 18:30:29
+ * @LastEditTime: 2025-06-01 01:15:14
  * @FilePath: \life_view\src\main\mvvm-handler.ts
  */
-import { ipcMain, BrowserWindow } from 'electron'
-import { join } from 'path'
+import { ipcMain } from 'electron'
 
-// 动态加载C++ addon
-let addon: any = null
-let propertyChangeCallback: ((data: any) => void) | null = null
-
-try {
-  // 加载编译后的C++ addon
-  addon = require(join(__dirname, '../../backend/build/Debug/life_view_backend.node'))
-  console.log('MVVM C++ addon loaded successfully')
-} catch (error) {
-  console.error('Failed to load MVVM C++ addon:', error)
-  // 尝试Release版本
-  try {
-    addon = require(join(__dirname, '../../backend/build/Release/life_view_backend.node'))
-    console.log('MVVM C++ addon (Release) loaded successfully')
-  } catch (releaseError) {
-    console.error('Failed to load MVVM C++ addon (Release):', releaseError)
-  }
+// Define types
+interface ViewModelInstance {
+  getViewId(): string;
+  action(actionName: string, ...args: unknown[]): unknown;
+  addPropertyListener(propName: string, callback: (changeInfo: PropertyChangeInfo) => void): void;
+  getState(): unknown;
 }
 
-// 设置属性变化回调的包装函数
-function setupPropertyChangeCallback(window: BrowserWindow) {
-  if (!addon) return
-
-  const callback = (changeInfo: any) => {
-    console.log('Property changed:', changeInfo)
-    // 发送到前端
-    window.webContents.send('mvvm-property-changed', changeInfo)
-  }
-
-  try {
-    addon.setPropertyChangedCallback(callback)
-    propertyChangeCallback = callback
-    console.log('Property change callback set successfully')
-  } catch (error) {
-    console.error('Failed to set property change callback:', error)
-  }
+interface PropertyChangeInfo {
+  viewId: string;
+  propName: string;
+  value: unknown;
 }
 
-export function initMVVMHandlers(): void {
-  if (!addon) {
-    console.warn('MVVM addon not available, skipping IPC handlers')
-    return
-  }
+let mvvmNative: {
+  createViewModel: (type: string) => ViewModelInstance;
+} | null = null
 
-  // 设置属性变化监听器
-  ipcMain.handle('mvvm-set-callback', async (event) => {
-    const window = BrowserWindow.fromWebContents(event.sender)
-    if (window) {
-      setupPropertyChangeCallback(window)
+// Initialize MVVM native module
+function initMVVM(): typeof mvvmNative {
+  if (!mvvmNative) {
+    try {
+      // Dynamic loading with eval to avoid TypeScript/linter issues
+      const requireFunc = eval('require')
+      mvvmNative = requireFunc('../../backend/build/Release/life_view_backend.node')
+      console.log('MVVM native module loaded successfully')
+    } catch (error) {
+      console.error('Failed to load MVVM native module:', error)
+      throw error
     }
-    return { success: true }
-  })
+  }
+  return mvvmNative
+}
 
-  // 执行ViewModel Action
-  ipcMain.handle(
-    'mvvm-execute-action',
-    async (event, viewModelName: string, actionName: string, ...args: any[]) => {
-      try {
-        console.log(`Executing action: ${viewModelName}.${actionName}`, args)
-        const result = addon.executeAction(viewModelName, actionName, ...args)
-        return { success: true, result }
-      } catch (error) {
-        console.error('Failed to execute action:', error)
-        throw error
+export function registerMVVMHandlers(): void {
+  // Create ViewModel - returns a ViewModel instance directly
+  ipcMain.handle('mvvm:createViewModel', async (event, viewModelType: string) => {
+    try {
+      const mvvm = initMVVM()
+      if (!mvvm) {
+        throw new Error('Failed to initialize MVVM native module')
+      }
+      
+      const viewModelInstance = mvvm.createViewModel(viewModelType)
+      
+      // Store the instance reference in the renderer process
+      // We'll return a unique ID and keep the instance in main process
+      const instanceId = `vm_${Date.now()}_${Math.random()}`
+      
+      // Store instance for future reference
+      if (!global.viewModelInstances) {
+        global.viewModelInstances = new Map()
+      }
+      global.viewModelInstances.set(instanceId, viewModelInstance)
+      
+      return {
+        success: true,
+        instanceId: instanceId,
+        viewId: viewModelInstance.getViewId()
+      }
+    } catch (error) {
+      console.error('Error creating ViewModel:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
       }
     }
-  )
+  })
 
-  // 获取ViewModel状态
-  ipcMain.handle('mvvm-get-state', async (event, viewModelName: string) => {
+  // Execute action on ViewModel instance
+  ipcMain.handle('mvvm:executeAction', async (event, instanceId: string, actionName: string, ...args: unknown[]) => {
     try {
-      const state = addon.getViewModelState(viewModelName)
-      return state
+      const viewModelInstance = global.viewModelInstances?.get(instanceId)
+      if (!viewModelInstance) {
+        throw new Error(`ViewModel instance not found: ${instanceId}`)
+      }
+      
+      console.log(`Executing action: ${actionName} with args:`, args)
+      
+      // Call the action method with actionName and all args
+      const result = viewModelInstance.action(actionName, ...args)
+      return { success: true, result }
     } catch (error) {
-      console.error('Failed to get ViewModel state:', error)
-      throw error
+      console.error('Error executing action:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }
     }
   })
 
-  // 获取所有ViewModels
-  ipcMain.handle('mvvm-get-all', async (event) => {
+  // Add property listener to ViewModel instance
+  ipcMain.handle('mvvm:addPropertyListener', async (event, instanceId: string, propName: string) => {
     try {
-      const allViewModels = addon.getAllViewModels()
-      console.log('All ViewModels:', allViewModels)
-      return allViewModels
+      const viewModelInstance = global.viewModelInstances?.get(instanceId)
+      if (!viewModelInstance) {
+        throw new Error(`ViewModel instance not found: ${instanceId}`)
+      }
+      
+      // Add listener that forwards changes to renderer
+      viewModelInstance.addPropertyListener(propName, (changeInfo: PropertyChangeInfo) => {
+        // Forward property change to renderer process
+        event.sender.send('mvvm:propertyChanged', {
+          instanceId,
+          ...changeInfo
+        })
+      })
+      
+      return { success: true }
     } catch (error) {
-      console.error('Failed to get all ViewModels:', error)
-      throw error
+      console.error('Error adding property listener:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }
     }
   })
 
-  console.log('MVVM IPC handlers initialized')
+  // Get ViewModel state
+  ipcMain.handle('mvvm:getState', async (event, instanceId: string) => {
+    try {
+      const viewModelInstance = global.viewModelInstances?.get(instanceId)
+      if (!viewModelInstance) {
+        throw new Error(`ViewModel instance not found: ${instanceId}`)
+      }
+      
+      const state = viewModelInstance.getState()
+      return { success: true, state }
+    } catch (error) {
+      console.error('Error getting state:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }
+    }
+  })
+
+  // Remove ViewModel instance
+  ipcMain.handle('mvvm:removeViewModel', async (event, instanceId: string) => {
+    try {
+      if (global.viewModelInstances?.has(instanceId)) {
+        global.viewModelInstances.delete(instanceId)
+        return { success: true }
+      }
+      return { success: false, error: 'Instance not found' }
+    } catch (error) {
+      console.error('Error removing ViewModel:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }
+    }
+  })
+
+  console.log('MVVM handlers registered successfully')
 }

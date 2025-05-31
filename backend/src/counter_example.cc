@@ -2,7 +2,7 @@
  * @Author: Nana5aki
  * @Date: 2025-05-31 18:35:00
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-05-31 19:37:22
+ * @LastEditTime: 2025-06-01 01:13:03
  * @FilePath: \life_view\backend\src\counter_example.cc
  */
 #include "counter_example.h"
@@ -10,14 +10,16 @@
 
 namespace counter_example {
 
+std::shared_ptr<framework::ViewModel> CreateCounterViewModel(const std::string& viewId) {
+  auto viewModel = std::make_shared<CounterViewModel>(viewId);
+  return viewModel;
+}
+
 void InitCounterExample() {
-  // 创建CounterViewModel实例
-  auto counterViewModel = std::make_shared<CounterViewModel>();
+  // Register CounterViewModel factory function to MVVMManager
+  MVVMManager::getInstance()->registerViewModelFactory("counter", CreateCounterViewModel);
 
-  // 注册到MVVM管理器
-  MVVMManager::getInstance()->registerViewModel("counter", counterViewModel);
-
-  std::cout << "Counter example initialized successfully!" << std::endl;
+  std::cout << "Counter example initialized successfully" << std::endl;
 }
 
 }   // namespace counter_example

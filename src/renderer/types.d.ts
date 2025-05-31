@@ -1,10 +1,11 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
+/// <reference types="react" />
+/// <reference types="react-dom" />
 
 declare global {
   interface Window {
-    electron: ElectronAPI & {
+    electron: {
       ipcRenderer: {
-        invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
+        invoke: (channel: string, ...args: unknown[]) => Promise<any>
         on: (channel: string, listener: (event: unknown, ...args: unknown[]) => void) => void
         removeListener: (channel: string, listener: (event: unknown, ...args: unknown[]) => void) => void
         send: (channel: string, ...args: unknown[]) => void
@@ -12,4 +13,4 @@ declare global {
     }
     api: unknown
   }
-}
+} 

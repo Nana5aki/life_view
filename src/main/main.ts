@@ -1,29 +1,30 @@
 /*
  * @Author: Nana5aki
- * @Date: 2025-05-30 21:21:48
+ * @Date: 2025-05-31 22:59:11
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-05-31 18:30:38
- * @FilePath: \life_view\src\main\index.ts
+ * @LastEditTime: 2025-06-01 00:49:29
+ * @FilePath: \life_view\src\main\main.ts
  */
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { initMVVMHandlers } from './mvvm-handler'
+import { registerMVVMHandlers } from './mvvm-handler'
 
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 900,
+    height: 670,
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      enableRemoteModule: false,
+      nodeIntegration: false
     }
   })
 
@@ -59,11 +60,8 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
-
-  // 初始化MVVM处理器
-  initMVVMHandlers()
+  // Register MVVM handlers
+  registerMVVMHandlers()
 
   createWindow()
 
@@ -83,5 +81,5 @@ app.on('window-all-closed', () => {
   }
 })
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+// In this file you can include the rest of your app"s main process
+// code. You can also put them in separate files and require them here. 
