@@ -10,8 +10,7 @@ interface CounterInstanceProps {
 }
 
 const CounterInstance: React.FC<CounterInstanceProps> = ({ title, color }) => {
-  const { instanceId, viewId, isReady, error, executeAction, getProp, onPropertyChange } =
-    useMVVM('counter')
+  const { executeAction, getProp, onPropertyChange } = useMVVM('counter')
 
   const [count, setCount] = useState<number>(0)
   const [message, setMessage] = useState<string>('Loading...')
@@ -42,7 +41,7 @@ const CounterInstance: React.FC<CounterInstanceProps> = ({ title, color }) => {
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe())
     }
-  }, [isReady, onPropertyChange, getProp])
+  }, [onPropertyChange, getProp])
 
   const handleIncrement = async (): Promise<void> => {
     setLoading(true)
@@ -77,11 +76,6 @@ const CounterInstance: React.FC<CounterInstanceProps> = ({ title, color }) => {
       }}
     >
       <h3 style={{ color, margin: '0 0 15px 0' }}>{title}</h3>
-
-      <div style={{ marginBottom: '15px', fontSize: '12px', color: '#6b7280' }}>
-        <div>实例ID: {instanceId}</div>
-        <div>视图ID: {viewId}</div>
-      </div>
 
       <div
         style={{
