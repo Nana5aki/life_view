@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useMVVM } from '../hooks/useMVVM'
 
 const CounterView: React.FC = () => {
-  const { instanceId, viewId, isReady, executeAction, getProp, onPropertyChange } =
-    useMVVM('counter')
+  const { executeAction, getProp, onPropertyChange } = useMVVM('counter')
 
   // 本地状态
   const [customValue, setCustomValue] = useState(5)
@@ -13,12 +12,7 @@ const CounterView: React.FC = () => {
   const [message, setMessage] = useState<string>('Loading...')
   const [isEven, setIsEven] = useState<boolean>(false)
 
-  /**
-   * 当ViewModel准备就绪时，设置属性监听器并获取初始值
-   */
   useEffect(() => {
-    if (!isReady) return
-
     // 设置属性变化监听器
     const unsubscribers = [
       onPropertyChange('count', (value) => setCount(value as number)),
@@ -45,7 +39,7 @@ const CounterView: React.FC = () => {
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe())
     }
-  }, [isReady, onPropertyChange, getProp])
+  }, [onPropertyChange, getProp])
 
   // 各种操作处理函数
   const handleIncrement = (): void => {
@@ -59,15 +53,6 @@ const CounterView: React.FC = () => {
   }
   const handleAddCustom = (): void => {
     executeAction('addNumber', customValue)
-  }
-
-  // 如果ViewModel未准备好，显示简单提示
-  if (!isReady) {
-    return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h2>正在初始化...</h2>
-      </div>
-    )
   }
 
   return (

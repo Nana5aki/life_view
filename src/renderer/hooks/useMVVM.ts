@@ -25,12 +25,6 @@ interface UseMVVMReturn {
   onPropertyChange: (propName: string, callback: (value: unknown) => void) => () => void
 }
 
-/**
- * MVVM Hook - 用于管理与C++后端ViewModel的交互
- *
- * @param viewModelType ViewModel类型，如 'counter'
- * @returns MVVM操作接口
- */
 export function useMVVM(viewModelType: string): UseMVVMReturn {
   // 简化状态管理
   const [viewModel, setViewModel] = useState<ViewModelInstance>({})
@@ -133,12 +127,6 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     }
   }, [viewModel.instanceId])
 
-  /**
-   * 添加属性监听器 (内部使用)
-   *
-   * @param propName 属性名称
-   * @returns 是否添加成功
-   */
   const addPropertyListener = useCallback(
     async (propName: string): Promise<boolean> => {
       if (!viewModel.instanceId) {
@@ -171,13 +159,6 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     [viewModel.instanceId]
   )
 
-  /**
-   * 执行ViewModel操作
-   *
-   * @param actionName 操作名称
-   * @param args 操作参数
-   * @returns 操作结果
-   */
   const executeAction = useCallback(
     async (actionName: string, ...args: unknown[]): Promise<unknown> => {
       if (!viewModel.instanceId) {
@@ -206,12 +187,6 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     [viewModel.instanceId]
   )
 
-  /**
-   * 获取属性值 - 直接通过IPC获取最新值
-   *
-   * @param propName 属性名称
-   * @returns 属性值
-   */
   const getProp = useCallback(
     async (propName: string): Promise<unknown> => {
       if (!viewModel.instanceId) {
@@ -233,13 +208,6 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     [viewModel.instanceId]
   )
 
-  /**
-   * 注册属性变化回调
-   *
-   * @param propName 属性名称
-   * @param callback 变化回调函数
-   * @returns 取消监听的函数
-   */
   const onPropertyChange = useCallback(
     (propName: string, callback: (value: unknown) => void): (() => void) => {
       // 获取或创建回调集合
