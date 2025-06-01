@@ -1,14 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useMVVM } from '../hooks/useMVVM'
 
-/**
- * 计数器演示组件 - 展示MVVM模式在React中的应用
- *
- * 该组件连接到C++后端的CounterViewModel，实现：
- * - 双向数据绑定
- * - 操作执行（包括带参数的操作）
- * - 实时状态更新
- */
 const CounterView: React.FC = () => {
   const { instanceId, viewId, isReady, executeAction, getProp, onPropertyChange } =
     useMVVM('counter')
@@ -91,46 +83,6 @@ const CounterView: React.FC = () => {
         🚀 MVVM计数器演示
       </h1>
 
-      {/* ViewModel信息卡片 */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          marginBottom: '20px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        <h3 style={{ margin: '0 0 15px 0' }}>📋 ViewModel信息</h3>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'auto 1fr',
-            gap: '10px',
-            fontSize: '14px'
-          }}
-        >
-          <span>
-            <strong>实例ID:</strong>
-          </span>
-          <span style={{ fontFamily: 'monospace' }}>{instanceId}</span>
-          <span>
-            <strong>视图ID:</strong>
-          </span>
-          <span style={{ fontFamily: 'monospace' }}>{viewId}</span>
-          <span>
-            <strong>状态:</strong>
-          </span>
-          <span>✅ 已连接并就绪</span>
-          <span>
-            <strong>后端:</strong>
-          </span>
-          <span>C++ MVVM Framework (优化版)</span>
-        </div>
-      </div>
-
-      {/* 计数器显示区域 */}
       <div
         style={{
           background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
@@ -267,38 +219,6 @@ const CounterView: React.FC = () => {
             ➕ 添加
           </button>
         </div>
-      </div>
-
-      {/* 技术说明 */}
-      <div
-        style={{
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '12px',
-          padding: '20px'
-        }}
-      >
-        <h3 style={{ margin: '0 0 15px 0', color: '#475569' }}>🔧 技术特性 (优化版)</h3>
-        <ul style={{ margin: 0, paddingLeft: '20px', color: '#64748b', lineHeight: '1.6' }}>
-          <li>
-            <strong>多实例支持:</strong> 每个useMVVM调用创建独立的ViewModel实例
-          </li>
-          <li>
-            <strong>按需获取:</strong> 属性值通过IPC按需获取，减少内存占用
-          </li>
-          <li>
-            <strong>事件驱动:</strong> 使用onPropertyChange API简化属性监听
-          </li>
-          <li>
-            <strong>自动清理:</strong> 组件卸载时自动清理监听器和实例
-          </li>
-          <li>
-            <strong>错误处理:</strong> 完善的错误处理和用户反馈
-          </li>
-          <li>
-            <strong>类型安全:</strong> 完整的TypeScript类型定义
-          </li>
-        </ul>
       </div>
     </div>
   )
