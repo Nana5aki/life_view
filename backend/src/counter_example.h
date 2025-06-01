@@ -2,7 +2,7 @@
  * @Author: Nana5aki
  * @Date: 2025-05-31 18:35:00
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-01 18:02:48
+ * @LastEditTime: 2025-06-01 23:30:30
  * @FilePath: \life_view\backend\src\counter_example.h
  */
 #ifndef COUNTER_EXAMPLE_H
@@ -24,7 +24,6 @@ public:
 
     // Initialize properties
     SetProp("count", number_);
-    SetProp("message", std::string("Hello MVVM"));
     SetProp("isEven", (number_ % 2 == 0));
 
     std::cout << "CounterViewModel properties initialized" << std::endl;

@@ -9,27 +9,20 @@ const CounterView: React.FC = () => {
 
   // 属性状态
   const [count, setCount] = useState<number>(0)
-  const [message, setMessage] = useState<string>('Loading...')
   const [isEven, setIsEven] = useState<boolean>(false)
 
   useEffect(() => {
     // 设置属性变化监听器
     const unsubscribers = [
       onPropertyChange('count', (value) => setCount(value as number)),
-      onPropertyChange('message', (value) => setMessage(value as string)),
       onPropertyChange('isEven', (value) => setIsEven(value as boolean))
     ]
 
     // 获取初始属性值
     const loadInitialValues = async (): Promise<void> => {
-      const [initialCount, initialMessage, initialIsEven] = await Promise.all([
-        getProp('count'),
-        getProp('message'),
-        getProp('isEven')
-      ])
+      const [initialCount, initialIsEven] = await Promise.all([getProp('count'), getProp('isEven')])
 
       setCount((initialCount as number) || 0)
-      setMessage((initialMessage as string) || 'Ready')
       setIsEven((initialIsEven as boolean) || false)
     }
 
@@ -64,10 +57,6 @@ const CounterView: React.FC = () => {
         fontFamily: 'Arial, sans-serif'
       }}
     >
-      <h1 style={{ textAlign: 'center', color: '#1f2937', marginBottom: '30px' }}>
-        🚀 MVVM计数器演示
-      </h1>
-
       <div
         style={{
           background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
@@ -83,7 +72,6 @@ const CounterView: React.FC = () => {
         <p style={{ margin: '0 0 10px 0', fontSize: '18px' }}>
           当前值 {isEven ? '是' : '不是'} 偶数
         </p>
-        <p style={{ margin: '0', fontSize: '16px', opacity: 0.9 }}>{message}</p>
       </div>
 
       {/* 操作按钮区域 */}
