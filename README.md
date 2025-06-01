@@ -1,34 +1,18 @@
+<!--
+ * @Author: Nana5aki
+ * @Date: 2025-05-30 21:21:48
+ * @LastEditors: Nana5aki
+ * @LastEditTime: 2025-06-02 00:11:20
+ * @FilePath: \life_view\README.md
+-->
 # life_view
 
-An Electron application with React and TypeScript
+一个electron todolist应用，使用MVVM架构
 
-## Recommended IDE Setup
+- View - React & Typescript
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+- ViewModel & Model - C++
 
-## Project Setup
+正在学习 JS & React & electron， 练习项目，欢迎交流
 
-### Install
-
-```bash
-$ npm install
-```
-
-### Development
-
-```bash
-$ npm run dev
-```
-
-### Build
-
-```bash
-# For windows
-$ npm run build:win
-
-# For macOS
-$ npm run build:mac
-
-# For Linux
-$ npm run build:linux
 ```
