@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { MVVMResponse, PropertyChangeEvent } from '../types'
 
-/**
- * ViewModel实例状态接口
- */
 interface ViewModelInstance {
   instanceId?: string
   viewId?: string
@@ -13,12 +10,6 @@ interface ViewModelInstance {
  * useMVVM Hook返回值接口
  */
 interface UseMVVMReturn {
-  // 状态属性
-  instanceId: string | undefined
-  viewId: string | undefined
-  isReady: boolean
-  error: string | null
-
   // 操作方法
   executeAction: (actionName: string, ...args: unknown[]) => Promise<unknown>
   getProp: (propName: string) => Promise<unknown>
@@ -28,8 +19,6 @@ interface UseMVVMReturn {
 export function useMVVM(viewModelType: string): UseMVVMReturn {
   // 简化状态管理
   const [viewModel, setViewModel] = useState<ViewModelInstance>({})
-  const [isReady, setIsReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   // 用于防止组件卸载后继续更新状态
   const mountedRef = useRef(true)
@@ -47,33 +36,23 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     mountedRef.current = true
 
     async function initViewModel(): Promise<void> {
-      try {
-        setError(null)
+      // 创建ViewModel实例
+      const createResult = (await window.electron.ipcRenderer.invoke(
+        'mvvm:createViewModel',
+        viewModelType
+      )) as MVVMResponse
 
-        // 创建ViewModel实例
-        const createResult = await window.electron.ipcRenderer.invoke(
-          'mvvm:createViewModel',
-          viewModelType
-        ) as MVVMResponse
+      if (!mountedRef.current) return
 
-        if (!mountedRef.current) return
-
-        if (!createResult.success) {
-          throw new Error(createResult.error || '创建ViewModel失败')
-        }
-
-        // 设置实例信息，不再获取初始状态
-        setViewModel({
-          instanceId: createResult.instanceId,
-          viewId: createResult.viewId
-        })
-        setIsReady(true)
-      } catch (err) {
-        if (mountedRef.current) {
-          const errorMessage = err instanceof Error ? err.message : '未知错误'
-          setError(errorMessage)
-        }
+      if (!createResult.success) {
+        throw new Error(createResult.error || '创建ViewModel失败')
       }
+
+      // 设置实例信息，不再获取初始状态
+      setViewModel({
+        instanceId: createResult.instanceId,
+        viewId: createResult.viewId
+      })
     }
 
     initViewModel()
@@ -139,11 +118,11 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
       }
 
       try {
-        const result = await window.electron.ipcRenderer.invoke(
+        const result = (await window.electron.ipcRenderer.invoke(
           'mvvm:addPropertyListener',
           viewModel.instanceId,
           propName
-        ) as MVVMResponse
+        )) as MVVMResponse
 
         if (result.success) {
           // 更新本地监听列表
@@ -167,12 +146,12 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
       }
 
       try {
-        const result = await window.electron.ipcRenderer.invoke(
+        const result = (await window.electron.ipcRenderer.invoke(
           'mvvm:executeAction',
           viewModel.instanceId,
           actionName,
           ...args
-        ) as MVVMResponse
+        )) as MVVMResponse
 
         if (result.success) {
           return result.result
@@ -193,11 +172,11 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
         throw new Error('ViewModel实例未准备好')
       }
 
-      const result = await window.electron.ipcRenderer.invoke(
+      const result = (await window.electron.ipcRenderer.invoke(
         'mvvm:getProp',
         viewModel.instanceId,
         propName
-      ) as MVVMResponse
+      )) as MVVMResponse
 
       if (result.success) {
         return result.result
@@ -240,12 +219,6 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
   )
 
   return {
-    // 状态
-    instanceId: viewModel.instanceId,
-    viewId: viewModel.viewId,
-    isReady,
-    error,
-
     // 方法
     executeAction,
     getProp,
