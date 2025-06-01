@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${CMAKE_JS_INC})
+include_directories(src)
 
 file(GLOB_RECURSE SOURCES "*.cc" "*.h")
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${CMAKE_JS_SRC})

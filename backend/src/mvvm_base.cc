@@ -1,8 +1,16 @@
+/*
+ * @Author: Nana5aki
+ * @Date: 2025-05-31 21:20:15
+ * @LastEditors: Nana5aki
+ * @LastEditTime: 2025-06-01 18:03:29
+ * @FilePath: \life_view\backend\src\mvvm_base.cc
+ */
 #include "counter_example.h"
-#include "framework/mvvm_manager.h"
-#include "framework/viewmodel_wrapper.h"
-#include <napi.h>
+#include "framework/mvvm/mvvm_manager.h"
+#include "framework/platform/node/viewmodel_wrapper.h"
 #include <iostream>
+#include <napi.h>
+#include <sstream>
 
 // Create ViewModel and return wrapper instance
 Napi::Value CreateViewModel(const Napi::CallbackInfo& info) {
@@ -26,10 +34,18 @@ Napi::Value CreateViewModel(const Napi::CallbackInfo& info) {
 
   std::cout << "ViewModel instance created successfully, creating wrapper..." << std::endl;
 
+  // 生成viewId（由于ViewModel构造函数已经设置了view_id_，我们需要访问它）
+  // 但由于我们不能添加getViewId接口，我们需要从MVVMManager获取viewId
+  // 这里我们使用一个临时方案：重新生成相同的viewId
+  static int next_view_id = 1;
+  std::ostringstream oss;
+  oss << viewModelType << "_" << next_view_id++;
+  std::string viewId = oss.str();
+
   // Create and return wrapper
   auto wrapper = framework::ViewModelWrapper::constructor.New({});
   framework::ViewModelWrapper* wrapperInstance = framework::ViewModelWrapper::Unwrap(wrapper);
-  wrapperInstance->SetViewModel(viewModel);
+  wrapperInstance->SetViewModel(viewModel, viewId);
 
   std::cout << "Wrapper created and ViewModel set, returning to JavaScript" << std::endl;
   return wrapper;

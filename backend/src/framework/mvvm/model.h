@@ -10,7 +10,6 @@
 #include <any>
 #include <functional>
 #include <map>
-#include <napi.h>
 #include <string>
 #include <vector>
 
