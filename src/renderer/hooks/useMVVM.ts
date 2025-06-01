@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { MVVMResponse, ViewModelState, PropertyChangeEvent } from '../types'
+import type { MVVMResponse, PropertyChangeEvent } from '../types'
 
 /**
  * ViewModel实例状态接口
@@ -7,9 +7,8 @@ import type { MVVMResponse, ViewModelState, PropertyChangeEvent } from '../types
 interface ViewModelInstance {
   instanceId?: string
   viewId?: string
-  properties: Record<string, unknown>
-  actions: string[]
-  listenedProperties: Set<string>
+  // 移除冗余的properties、actions、listenedProperties
+  // 这些信息通过IPC动态获取或本地追踪即可
 }
 
 /**
@@ -17,52 +16,52 @@ interface ViewModelInstance {
  */
 interface UseMVVMReturn {
   // 状态属性
-  viewModel: ViewModelInstance
+  instanceId: string | undefined
+  viewId: string | undefined
   isReady: boolean
   error: string | null
-  
-  // 便捷访问属性
-  properties: Record<string, unknown>
-  viewId: string | undefined
-  
+
   // 操作方法
   addPropertyListener: (propName: string) => Promise<boolean>
   executeAction: (actionName: string, ...args: unknown[]) => Promise<unknown>
-  getProp: (propName: string) => unknown
-  refresh: () => Promise<void>
+  getProp: (propName: string) => Promise<unknown>
+
+  // 事件处理
+  onPropertyChange: (propName: string, callback: (value: unknown) => void) => () => void
 }
 
 /**
  * MVVM Hook - 用于管理与C++后端ViewModel的交互
- * 
+ *
  * @param viewModelType ViewModel类型，如 'counter'
  * @returns MVVM操作接口
  */
 export function useMVVM(viewModelType: string): UseMVVMReturn {
-  // 状态管理
-  const [viewModel, setViewModel] = useState<ViewModelInstance>({
-    properties: {},
-    actions: [],
-    listenedProperties: new Set()
-  })
+  // 简化状态管理
+  const [viewModel, setViewModel] = useState<ViewModelInstance>({})
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   // 用于防止组件卸载后继续更新状态
   const mountedRef = useRef(true)
+
+  // 本地追踪已监听的属性，避免重复添加
+  const listenedPropsRef = useRef<Set<string>>(new Set())
+
+  // 属性变化回调映射
+  const propertyCallbacksRef = useRef<Map<string, Set<(value: unknown) => void>>>(new Map())
 
   /**
    * 初始化ViewModel实例
    */
   useEffect(() => {
     mountedRef.current = true
-    
+
     async function initViewModel(): Promise<void> {
       try {
         setError(null)
-        console.log(`正在创建ViewModel: ${viewModelType}`)
-        
-        // 1. 创建ViewModel实例
+
+        // 创建ViewModel实例
         const createResult: MVVMResponse = await window.electron.ipcRenderer.invoke(
           'mvvm:createViewModel',
           viewModelType
@@ -74,33 +73,15 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
           throw new Error(createResult.error || '创建ViewModel失败')
         }
 
-        console.log(`ViewModel创建成功: ${createResult.instanceId}`)
-
-        // 2. 获取初始状态
-        const stateResult: MVVMResponse<ViewModelState> = await window.electron.ipcRenderer.invoke(
-          'mvvm:getState',
-          createResult.instanceId
-        )
-
-        if (!mountedRef.current) return
-
-        if (stateResult.success && stateResult.state) {
-          setViewModel({
-            instanceId: createResult.instanceId,
-            viewId: createResult.viewId,
-            properties: stateResult.state.properties || {},
-            actions: stateResult.state.actions || [],
-            listenedProperties: new Set(stateResult.state.listenedProperties || [])
-          })
-          setIsReady(true)
-          console.log('ViewModel初始化完成', stateResult.state)
-        } else {
-          throw new Error(stateResult.error || '获取ViewModel状态失败')
-        }
+        // 设置实例信息，不再获取初始状态
+        setViewModel({
+          instanceId: createResult.instanceId,
+          viewId: createResult.viewId
+        })
+        setIsReady(true)
       } catch (err) {
         if (mountedRef.current) {
           const errorMessage = err instanceof Error ? err.message : '未知错误'
-          console.error('ViewModel初始化失败:', errorMessage)
           setError(errorMessage)
         }
       }
@@ -111,13 +92,18 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     // 清理函数
     return () => {
       mountedRef.current = false
+      listenedPropsRef.current.clear()
+      propertyCallbacksRef.current.clear()
+
       if (viewModel.instanceId) {
-        console.log(`清理ViewModel实例: ${viewModel.instanceId}`)
-        window.electron.ipcRenderer.invoke('mvvm:removeViewModel', viewModel.instanceId)
-          .catch(err => console.error('清理ViewModel失败:', err))
+        window.electron.ipcRenderer
+          .invoke('mvvm:removeViewModel', viewModel.instanceId)
+          .catch(() => {
+            // 静默处理清理错误
+          })
       }
     }
-  }, [viewModelType]) // 仅在viewModelType变化时重新初始化
+  }, [viewModelType])
 
   /**
    * 监听属性变化事件
@@ -125,18 +111,21 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
   useEffect(() => {
     if (!viewModel.instanceId) return
 
-    function handlePropertyChange(event: unknown, changeInfo: PropertyChangeEvent): void {
+    function handlePropertyChange(_event: unknown, ...args: unknown[]): void {
+      const changeInfo = args[0] as PropertyChangeEvent
       // 确保事件属于当前ViewModel实例
       if (changeInfo.instanceId === viewModel.instanceId && mountedRef.current) {
-        console.log(`属性变化: ${changeInfo.propName} = ${changeInfo.value}`)
-        
-        setViewModel(prev => ({
-          ...prev,
-          properties: {
-            ...prev.properties,
-            [changeInfo.propName]: changeInfo.value
-          }
-        }))
+        // 触发属性变化回调
+        const callbacks = propertyCallbacksRef.current.get(changeInfo.propName)
+        if (callbacks) {
+          callbacks.forEach((callback) => {
+            try {
+              callback(changeInfo.value)
+            } catch (err) {
+              // 静默处理回调错误
+            }
+          })
+        }
       }
     }
 
@@ -151,26 +140,22 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
 
   /**
    * 添加属性监听器
-   * 
+   *
    * @param propName 属性名称
    * @returns 是否添加成功
    */
   const addPropertyListener = useCallback(
     async (propName: string): Promise<boolean> => {
       if (!viewModel.instanceId) {
-        console.warn('ViewModel实例未准备好，无法添加属性监听器')
         return false
       }
 
       // 避免重复添加监听器
-      if (viewModel.listenedProperties.has(propName)) {
-        console.log(`属性 ${propName} 已在监听中`)
+      if (listenedPropsRef.current.has(propName)) {
         return true
       }
 
       try {
-        console.log(`添加属性监听器: ${propName}`)
-        
         const result: MVVMResponse = await window.electron.ipcRenderer.invoke(
           'mvvm:addPropertyListener',
           viewModel.instanceId,
@@ -179,26 +164,21 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
 
         if (result.success) {
           // 更新本地监听列表
-          setViewModel(prev => ({
-            ...prev,
-            listenedProperties: new Set([...prev.listenedProperties, propName])
-          }))
+          listenedPropsRef.current.add(propName)
           return true
         } else {
-          console.error('添加属性监听器失败:', result.error)
           return false
         }
       } catch (err) {
-        console.error('添加属性监听器异常:', err)
         return false
       }
     },
-    [viewModel.instanceId, viewModel.listenedProperties]
+    [viewModel.instanceId]
   )
 
   /**
    * 执行ViewModel操作
-   * 
+   *
    * @param actionName 操作名称
    * @param args 操作参数
    * @returns 操作结果
@@ -207,13 +187,10 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     async (actionName: string, ...args: unknown[]): Promise<unknown> => {
       if (!viewModel.instanceId) {
         const error = 'ViewModel实例未准备好，无法执行操作'
-        console.error(error)
         throw new Error(error)
       }
 
       try {
-        console.log(`执行操作: ${actionName}`, args)
-        
         const result: MVVMResponse = await window.electron.ipcRenderer.invoke(
           'mvvm:executeAction',
           viewModel.instanceId,
@@ -222,14 +199,12 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
         )
 
         if (result.success) {
-          console.log(`操作 ${actionName} 执行成功`)
           return result.result
         } else {
           throw new Error(result.error || '操作执行失败')
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : '操作执行异常'
-        console.error(`操作 ${actionName} 失败:`, errorMessage)
         throw new Error(errorMessage)
       }
     },
@@ -237,56 +212,85 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
   )
 
   /**
-   * 获取属性值
-   * 
+   * 获取属性值 - 直接通过IPC获取最新值
+   *
    * @param propName 属性名称
    * @returns 属性值
    */
   const getProp = useCallback(
-    (propName: string): unknown => {
-      return viewModel.properties[propName]
+    async (propName: string): Promise<unknown> => {
+      if (!viewModel.instanceId) {
+        throw new Error('ViewModel实例未准备好')
+      }
+
+      try {
+        const result: MVVMResponse = await window.electron.ipcRenderer.invoke(
+          'mvvm:getProp',
+          viewModel.instanceId,
+          propName
+        )
+
+        if (result.success) {
+          return result.result
+        } else {
+          throw new Error(result.error || '获取属性失败')
+        }
+      } catch (err) {
+        throw err
+      }
     },
-    [viewModel.properties]
+    [viewModel.instanceId]
   )
 
   /**
-   * 刷新ViewModel状态
+   * 注册属性变化回调
+   *
+   * @param propName 属性名称
+   * @param callback 变化回调函数
+   * @returns 取消监听的函数
    */
-  const refresh = useCallback(async (): Promise<void> => {
-    if (!viewModel.instanceId) return
-
-    try {
-      const stateResult: MVVMResponse<ViewModelState> = await window.electron.ipcRenderer.invoke(
-        'mvvm:getState',
-        viewModel.instanceId
-      )
-
-      if (stateResult.success && stateResult.state && mountedRef.current) {
-        setViewModel(prev => ({
-          ...prev,
-          properties: stateResult.state!.properties || {},
-          actions: stateResult.state!.actions || []
-        }))
+  const onPropertyChange = useCallback(
+    (propName: string, callback: (value: unknown) => void): (() => void) => {
+      // 获取或创建回调集合
+      let callbacks = propertyCallbacksRef.current.get(propName)
+      if (!callbacks) {
+        callbacks = new Set()
+        propertyCallbacksRef.current.set(propName, callbacks)
       }
-    } catch (err) {
-      console.error('刷新ViewModel状态失败:', err)
-    }
-  }, [viewModel.instanceId])
+
+      // 添加回调
+      callbacks.add(callback)
+
+      // 自动添加属性监听器
+      addPropertyListener(propName).catch(() => {
+        // 静默处理监听器添加失败
+      })
+
+      // 返回取消监听的函数
+      return () => {
+        const callbacks = propertyCallbacksRef.current.get(propName)
+        if (callbacks) {
+          callbacks.delete(callback)
+          if (callbacks.size === 0) {
+            propertyCallbacksRef.current.delete(propName)
+          }
+        }
+      }
+    },
+    [addPropertyListener]
+  )
 
   return {
     // 状态
-    viewModel,
+    instanceId: viewModel.instanceId,
+    viewId: viewModel.viewId,
     isReady,
     error,
-
-    // 便捷访问
-    properties: viewModel.properties,
-    viewId: viewModel.viewId,
 
     // 方法
     addPropertyListener,
     executeAction,
     getProp,
-    refresh
+    onPropertyChange
   }
 }

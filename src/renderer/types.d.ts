@@ -16,7 +16,7 @@ declare global {
     electron: {
       ipcRenderer: {
         /** 调用主进程方法并等待返回结果 */
-        invoke: (channel: string, ...args: unknown[]) => Promise<any>
+        invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
         /** 监听来自主进程的事件 */
         on: (channel: string, listener: (event: unknown, ...args: unknown[]) => void) => void
         /** 移除事件监听器 */
@@ -36,15 +36,8 @@ export interface MVVMResponse<T = unknown> {
   success: boolean
   error?: string
   result?: T
-  state?: ViewModelState
   instanceId?: string
   viewId?: string
-}
-
-export interface ViewModelState {
-  properties: Record<string, unknown>
-  actions: string[]
-  listenedProperties: string[]
 }
 
 export interface PropertyChangeEvent {
