@@ -43,13 +43,9 @@ declare global {
  */
 function initMVVM(): typeof mvvmNative {
   if (!mvvmNative) {
-    try {
-      // 动态加载原生模块，避免TypeScript警告
-      const requireFunc = eval('require')
-      mvvmNative = requireFunc('../../backend/build/Release/life_view_backend.node')
-    } catch (error) {
-      throw error
-    }
+    // 动态加载原生模块，避免TypeScript警告
+    const requireFunc = eval('require')
+    mvvmNative = requireFunc('../../backend/build/Release/life_view_backend.node')
   }
   return mvvmNative
 }

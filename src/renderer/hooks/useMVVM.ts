@@ -7,8 +7,6 @@ import type { MVVMResponse, PropertyChangeEvent } from '../types'
 interface ViewModelInstance {
   instanceId?: string
   viewId?: string
-  // 移除冗余的properties、actions、listenedProperties
-  // 这些信息通过IPC动态获取或本地追踪即可
 }
 
 /**
@@ -22,11 +20,8 @@ interface UseMVVMReturn {
   error: string | null
 
   // 操作方法
-  addPropertyListener: (propName: string) => Promise<boolean>
   executeAction: (actionName: string, ...args: unknown[]) => Promise<unknown>
   getProp: (propName: string) => Promise<unknown>
-
-  // 事件处理
   onPropertyChange: (propName: string, callback: (value: unknown) => void) => () => void
 }
 
@@ -62,10 +57,10 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
         setError(null)
 
         // 创建ViewModel实例
-        const createResult: MVVMResponse = await window.electron.ipcRenderer.invoke(
+        const createResult = await window.electron.ipcRenderer.invoke(
           'mvvm:createViewModel',
           viewModelType
-        )
+        ) as MVVMResponse
 
         if (!mountedRef.current) return
 
@@ -121,7 +116,7 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
           callbacks.forEach((callback) => {
             try {
               callback(changeInfo.value)
-            } catch (err) {
+            } catch {
               // 静默处理回调错误
             }
           })
@@ -139,7 +134,7 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
   }, [viewModel.instanceId])
 
   /**
-   * 添加属性监听器
+   * 添加属性监听器 (内部使用)
    *
    * @param propName 属性名称
    * @returns 是否添加成功
@@ -156,11 +151,11 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
       }
 
       try {
-        const result: MVVMResponse = await window.electron.ipcRenderer.invoke(
+        const result = await window.electron.ipcRenderer.invoke(
           'mvvm:addPropertyListener',
           viewModel.instanceId,
           propName
-        )
+        ) as MVVMResponse
 
         if (result.success) {
           // 更新本地监听列表
@@ -169,7 +164,7 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
         } else {
           return false
         }
-      } catch (err) {
+      } catch {
         return false
       }
     },
@@ -191,12 +186,12 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
       }
 
       try {
-        const result: MVVMResponse = await window.electron.ipcRenderer.invoke(
+        const result = await window.electron.ipcRenderer.invoke(
           'mvvm:executeAction',
           viewModel.instanceId,
           actionName,
           ...args
-        )
+        ) as MVVMResponse
 
         if (result.success) {
           return result.result
@@ -223,20 +218,16 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
         throw new Error('ViewModel实例未准备好')
       }
 
-      try {
-        const result: MVVMResponse = await window.electron.ipcRenderer.invoke(
-          'mvvm:getProp',
-          viewModel.instanceId,
-          propName
-        )
+      const result = await window.electron.ipcRenderer.invoke(
+        'mvvm:getProp',
+        viewModel.instanceId,
+        propName
+      ) as MVVMResponse
 
-        if (result.success) {
-          return result.result
-        } else {
-          throw new Error(result.error || '获取属性失败')
-        }
-      } catch (err) {
-        throw err
+      if (result.success) {
+        return result.result
+      } else {
+        throw new Error(result.error || '获取属性失败')
       }
     },
     [viewModel.instanceId]
@@ -288,7 +279,6 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     error,
 
     // 方法
-    addPropertyListener,
     executeAction,
     getProp,
     onPropertyChange

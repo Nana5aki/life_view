@@ -10,13 +10,11 @@ import { useMVVM } from '../hooks/useMVVM'
  * - 实时状态更新
  */
 const CounterView: React.FC = () => {
-  const { instanceId, viewId, isReady, error, executeAction, getProp, onPropertyChange } =
+  const { instanceId, viewId, isReady, executeAction, getProp, onPropertyChange } =
     useMVVM('counter')
 
-  // 本地状态用于UI反馈和属性值缓存
-  const [loading, setLoading] = useState<string | null>(null)
+  // 本地状态
   const [customValue, setCustomValue] = useState(5)
-  const [actionError, setActionError] = useState<string | null>(null)
 
   // 属性状态
   const [count, setCount] = useState<number>(0)
@@ -57,115 +55,25 @@ const CounterView: React.FC = () => {
     }
   }, [isReady, onPropertyChange, getProp])
 
-  /**
-   * 执行操作的通用处理函数
-   */
-  const handleAction = async (actionName: string, ...args: unknown[]): Promise<void> => {
-    setLoading(actionName)
-    setActionError(null)
-
-    try {
-      await executeAction(actionName, ...args)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : `操作 ${actionName} 失败`
-      setActionError(errorMessage)
-    } finally {
-      setLoading(null)
-    }
-  }
-
   // 各种操作处理函数
   const handleIncrement = (): void => {
-    handleAction('increment')
+    executeAction('increment')
   }
   const handleDecrement = (): void => {
-    handleAction('decrement')
+    executeAction('decrement')
   }
   const handleReset = (): void => {
-    handleAction('reset')
+    executeAction('reset')
   }
   const handleAddCustom = (): void => {
-    handleAction('addNumber', customValue)
+    executeAction('addNumber', customValue)
   }
 
-  // 错误状态显示
-  if (error) {
-    return (
-      <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-        <div
-          style={{
-            background: '#ffebee',
-            border: '1px solid #f44336',
-            borderRadius: '8px',
-            padding: '20px',
-            color: '#c62828'
-          }}
-        >
-          <h2>❌ ViewModel错误</h2>
-          <p>
-            <strong>错误信息：</strong>
-            {error}
-          </p>
-          <p>
-            <strong>可能原因：</strong>
-          </p>
-          <ul>
-            <li>C++后端模块未正确编译或加载</li>
-            <li>ViewModel类型 &lsquo;counter&rsquo; 未注册</li>
-            <li>Node.js原生模块路径错误</li>
-          </ul>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#f44336',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              marginTop: '10px'
-            }}
-          >
-            重新加载页面
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // 加载状态显示
+  // 如果ViewModel未准备好，显示简单提示
   if (!isReady) {
     return (
-      <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-        <div
-          style={{
-            background: '#f3f4f6',
-            borderRadius: '8px',
-            padding: '40px',
-            textAlign: 'center'
-          }}
-        >
-          <div
-            style={{
-              width: '40px',
-              height: '40px',
-              border: '4px solid #e5e7eb',
-              borderTop: '4px solid #3b82f6',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 20px'
-            }}
-          ></div>
-          <h2>🔄 正在初始化ViewModel...</h2>
-          <p>正在连接到C++后端...</p>
-        </div>
-
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h2>正在初始化...</h2>
       </div>
     )
   }
@@ -241,23 +149,6 @@ const CounterView: React.FC = () => {
         <p style={{ margin: '0', fontSize: '16px', opacity: 0.9 }}>{message}</p>
       </div>
 
-      {/* 错误提示 */}
-      {actionError && (
-        <div
-          style={{
-            background: '#fee2e2',
-            border: '1px solid #fca5a5',
-            borderRadius: '8px',
-            padding: '15px',
-            marginBottom: '20px',
-            color: '#dc2626'
-          }}
-        >
-          <h4 style={{ margin: '0 0 5px 0' }}>⚠️ 操作错误</h4>
-          <p style={{ margin: 0, fontSize: '14px' }}>{actionError}</p>
-        </div>
-      )}
-
       {/* 操作按钮区域 */}
       <div
         style={{
@@ -282,56 +173,53 @@ const CounterView: React.FC = () => {
         >
           <button
             onClick={handleIncrement}
-            disabled={!!loading}
             style={{
               padding: '12px',
               fontSize: '16px',
               fontWeight: 'bold',
-              backgroundColor: loading === 'increment' ? '#93c5fd' : '#3b82f6',
+              backgroundColor: '#3b82f6',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: 'pointer',
               transition: 'all 0.2s'
             }}
           >
-            {loading === 'increment' ? '⏳' : '+'} 增加
+            + 增加
           </button>
 
           <button
             onClick={handleDecrement}
-            disabled={!!loading}
             style={{
               padding: '12px',
               fontSize: '16px',
               fontWeight: 'bold',
-              backgroundColor: loading === 'decrement' ? '#fca5a5' : '#ef4444',
+              backgroundColor: '#ef4444',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: 'pointer',
               transition: 'all 0.2s'
             }}
           >
-            {loading === 'decrement' ? '⏳' : '-'} 减少
+            - 减少
           </button>
 
           <button
             onClick={handleReset}
-            disabled={!!loading}
             style={{
               padding: '12px',
               fontSize: '16px',
               fontWeight: 'bold',
-              backgroundColor: loading === 'reset' ? '#a3a3a3' : '#6b7280',
+              backgroundColor: '#6b7280',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: 'pointer',
               transition: 'all 0.2s'
             }}
           >
-            {loading === 'reset' ? '⏳' : '🔄'} 重置
+            🔄 重置
           </button>
         </div>
 
@@ -364,20 +252,19 @@ const CounterView: React.FC = () => {
           />
           <button
             onClick={handleAddCustom}
-            disabled={!!loading}
             style={{
               padding: '8px 16px',
               fontSize: '14px',
               fontWeight: 'bold',
-              backgroundColor: loading === 'addNumber' ? '#c084fc' : '#8b5cf6',
+              backgroundColor: '#8b5cf6',
               color: 'white',
               border: 'none',
               borderRadius: '6px',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: 'pointer',
               transition: 'all 0.2s'
             }}
           >
-            {loading === 'addNumber' ? '⏳' : '➕'} 添加
+            ➕ 添加
           </button>
         </div>
       </div>
