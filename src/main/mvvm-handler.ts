@@ -2,30 +2,21 @@
  * @Author: Nana5aki
  * @Date: 2025-05-31 18:11:43
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-02 00:04:43
+ * @LastEditTime: 2025-06-02 11:02:38
  * @FilePath: \life_view\src\main\mvvm-handler.ts
  */
 import { ipcMain } from 'electron'
 
 // Define types based on actual C++ API
 interface ViewModelInstance {
-  getViewId(): string
   action(actionName: string, param?: unknown): void
   addPropertyListener(propName: string, callback: (changeInfo: PropertyChangeInfo) => void): void
-  getState(): ViewModelState
   getProp(propName: string): unknown
 }
 
 interface PropertyChangeInfo {
-  viewId: string
   propName: string
   value: unknown
-}
-
-interface ViewModelState {
-  properties: Record<string, unknown>
-  actions: string[]
-  listenedProperties: string[]
 }
 
 let mvvmNative: {
@@ -50,90 +41,59 @@ function initMVVM(): typeof mvvmNative {
   return mvvmNative
 }
 
-/**
- * 生成唯一的实例ID
- */
 function generateInstanceId(): string {
   return `vm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
-/**
- * 注册MVVM相关的IPC处理器
- */
 export function registerMVVMHandlers(): void {
-  // 初始化全局存储
   if (!global.viewModelInstances) {
     global.viewModelInstances = new Map()
   }
 
-  /**
-   * 创建ViewModel实例
-   */
-  ipcMain.handle('mvvm:createViewModel', async (event, viewModelType: string) => {
+  ipcMain.handle('mvvm:createViewModel', async (_, viewModelType: string) => {
     const mvvm = initMVVM()
     if (!mvvm) {
-      throw new Error('MVVM原生模块初始化失败')
+      throw new Error('native mvvm module init failed')
     }
-
-    // 创建ViewModel实例
     const viewModelInstance = mvvm.createViewModel(viewModelType)
     if (!viewModelInstance) {
-      throw new Error(`创建ViewModel失败: ${viewModelType}`)
+      throw new Error(`create view model failed: ${viewModelType}`)
     }
-
-    // 获取viewId（现在C++对象有这个方法了）
-    const viewId = viewModelInstance.getViewId()
     const instanceId = generateInstanceId()
-
-    // 存储实例
     global.viewModelInstances!.set(instanceId, viewModelInstance)
-
     return {
       success: true,
-      instanceId: instanceId,
-      viewId: viewId
+      instanceId: instanceId
     }
   })
 
-  /**
-   * 执行ViewModel操作
-   */
   ipcMain.handle(
     'mvvm:executeAction',
-    async (event, instanceId: string, actionName: string, ...args: unknown[]) => {
+    async (_, instanceId: string, actionName: string, ...args: unknown[]) => {
       const viewModelInstance = global.viewModelInstances?.get(instanceId)
       if (!viewModelInstance) {
-        throw new Error(`ViewModel实例未找到: ${instanceId}`)
+        throw new Error(`not find viewmodel: ${instanceId}`)
       }
-
-      // 调用C++的action方法，传递第一个参数（如果有的话）
       if (args.length > 0) {
         viewModelInstance.action(actionName, args[0])
       } else {
         viewModelInstance.action(actionName)
       }
-
       return { success: true }
     }
   )
 
-  /**
-   * 添加属性监听器
-   */
   ipcMain.handle(
     'mvvm:addPropertyListener',
     async (event, instanceId: string, propName: string) => {
       const viewModelInstance = global.viewModelInstances?.get(instanceId)
       if (!viewModelInstance) {
-        throw new Error(`ViewModel实例未找到: ${instanceId}`)
+        throw new Error(`not find viewmodel: ${instanceId}`)
       }
 
-      // 添加监听器，将变化转发给渲染进程
       viewModelInstance.addPropertyListener(propName, (changeInfo: PropertyChangeInfo) => {
-        // 转发给渲染进程
         event.sender.send('mvvm:propertyChanged', {
           instanceId,
-          viewId: changeInfo.viewId,
           propName: changeInfo.propName,
           value: changeInfo.value
         })
@@ -143,46 +103,21 @@ export function registerMVVMHandlers(): void {
     }
   )
 
-  /**
-   * 获取单个属性值
-   */
-  ipcMain.handle('mvvm:getProp', async (event, instanceId: string, propName: string) => {
+  ipcMain.handle('mvvm:getProp', async (_, instanceId: string, propName: string) => {
     const viewModelInstance = global.viewModelInstances?.get(instanceId)
     if (!viewModelInstance) {
-      throw new Error(`ViewModel实例未找到: ${instanceId}`)
+      throw new Error(`not find viewmodel: ${instanceId}`)
     }
-
-    // 直接调用C++的getProp方法
     const value = viewModelInstance.getProp(propName)
-
     return { success: true, result: value }
   })
 
-  ipcMain.handle('mvvm:getState', async (event, instanceId: string) => {
-    const viewModelInstance = global.viewModelInstances?.get(instanceId)
-    if (!viewModelInstance) {
-      throw new Error(`ViewModel实例未找到: ${instanceId}`)
-    }
-
-    // 简化状态返回，主要用于调试
-    const state = {
-      instanceId,
-      viewId: viewModelInstance.getViewId(),
-      timestamp: new Date().toISOString()
-    }
-
-    return { success: true, state }
-  })
-
-  /**
-   * 移除ViewModel实例
-   */
-  ipcMain.handle('mvvm:removeViewModel', async (event, instanceId: string) => {
+  ipcMain.handle('mvvm:removeViewModel', async (_, instanceId: string) => {
     if (global.viewModelInstances?.has(instanceId)) {
       global.viewModelInstances.delete(instanceId)
       return { success: true }
     }
 
-    return { success: false, error: '实例不存在' }
+    return { success: false, error: 'remove failed, not has this viewmodel ' }
   })
 }

@@ -2,7 +2,7 @@
  * @Author: Nana5aki
  * @Date: 2025-05-31 22:55:19
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-01 18:06:15
+ * @LastEditTime: 2025-06-02 11:02:47
  * @FilePath: \life_view\backend\src\framework\platform\node\viewmodel_wrapper.h
  */
 #pragma once
@@ -27,11 +27,8 @@ private:
   Napi::Value GetProp(const Napi::CallbackInfo& info);
   Napi::Value AddPropertyListener(const Napi::CallbackInfo& info);
   Napi::Value Action(const Napi::CallbackInfo& info);
-  Napi::Value GetViewId(const Napi::CallbackInfo& info);
-  Napi::Value GetState(const Napi::CallbackInfo& info);
 
   std::shared_ptr<ViewModel> viewmodel_;
-  std::string view_id_;
   Napi::FunctionReference property_changed_callback_;
 };
 

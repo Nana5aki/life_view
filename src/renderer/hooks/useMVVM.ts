@@ -2,7 +2,7 @@
  * @Author: Nana5aki
  * @Date: 2025-06-01 22:27:18
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-02 01:43:31
+ * @LastEditTime: 2025-06-02 10:58:02
  * @FilePath: \life_view\src\renderer\hooks\useMVVM.ts
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -56,7 +56,7 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
   useEffect(() => {
     if (!instanceId) return
 
-    const handleChange = (_: unknown, ...args: unknown[]) => {
+    const handleChange = (_: unknown, ...args: unknown[]): void => {
       const event = args[0] as PropertyChangeEvent
       if (event.instanceId === instanceId && mountedRef.current) {
         const callbacks = callbacksRef.current.get(event.propName)
@@ -72,7 +72,7 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
 
   const executeAction = useCallback(
     async (actionName: string, ...args: unknown[]) => {
-      if (!instanceId) throw new Error('ViewModel未初始化')
+      if (!instanceId) throw new Error('viewmodel not init!')
       const result = (await window.electron.ipcRenderer.invoke(
         'mvvm:executeAction',
         instanceId,
@@ -87,7 +87,7 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
 
   const getProp = useCallback(
     async (propName: string) => {
-      if (!instanceId) throw new Error('ViewModel未初始化')
+      if (!instanceId) throw new Error('viewmodel not init!')
       const result = (await window.electron.ipcRenderer.invoke(
         'mvvm:getProp',
         instanceId,
