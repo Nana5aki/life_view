@@ -10,6 +10,8 @@
 #include "framework/mvvm/viewmodel.h"
 #include <memory>
 #include <napi.h>
+#include <map>
+#include <string>
 
 namespace framework {
 
@@ -29,7 +31,7 @@ private:
   Napi::Value Action(const Napi::CallbackInfo& info);
 
   std::shared_ptr<ViewModel> viewmodel_;
-  Napi::FunctionReference property_changed_callback_;
+  std::map<std::string, Napi::FunctionReference> property_changed_callbacks_;
 };
 
 }   // namespace framework

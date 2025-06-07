@@ -2,14 +2,13 @@
  * @Author: Nana5aki
  * @Date: 2025-05-31 22:59:11
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-01 00:49:29
+ * @LastEditTime: 2025-06-07 11:59:01
  * @FilePath: \life_view\src\main\main.ts
  */
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { registerMVVMHandlers } from './mvvm-handler'
 
 function createWindow(): void {
   // Create the browser window.
@@ -23,7 +22,6 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      enableRemoteModule: false,
       nodeIntegration: false
     }
   })
@@ -59,9 +57,6 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
-
-  // Register MVVM handlers
-  registerMVVMHandlers()
 
   createWindow()
 

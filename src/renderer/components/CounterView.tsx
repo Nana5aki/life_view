@@ -1,3 +1,10 @@
+/*
+ * @Author: Nana5aki
+ * @Date: 2025-06-01 22:27:18
+ * @LastEditors: Nana5aki
+ * @LastEditTime: 2025-06-07 14:56:57
+ * @FilePath: \life_view\src\renderer\components\CounterView.tsx
+ */
 import React, { useEffect, useState } from 'react'
 import { useMVVM } from '../hooks/useMVVM'
 
@@ -6,6 +13,7 @@ const CounterView: React.FC = () => {
 
   // 本地状态
   const [customValue, setCustomValue] = useState(5)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // 属性状态
   const [count, setCount] = useState<number>(0)
@@ -14,38 +22,97 @@ const CounterView: React.FC = () => {
   useEffect(() => {
     // 设置属性变化监听器
     const unsubscribers = [
-      onPropertyChange('count', (value) => setCount(value as number)),
-      onPropertyChange('isEven', (value) => setIsEven(value as boolean))
+      onPropertyChange('count', (value) => {
+        setCount(value as number)
+      }),
+      onPropertyChange('isEven', (value) => {
+        setIsEven(value as boolean)
+      })
     ]
 
-    // 获取初始属性值
-    const loadInitialValues = async (): Promise<void> => {
-      const [initialCount, initialIsEven] = await Promise.all([getProp('count'), getProp('isEven')])
+    // 延迟初始化，确保ViewModel已经创建
+    const initTimer = setTimeout(() => {
+      try {
+        // 获取初始属性值 - 直接同步调用
+        const initialCount = getProp('count') as number
+        const initialIsEven = getProp('isEven') as boolean
+        setCount(initialCount || 0)
+        setIsEven(initialIsEven || false)
+        setIsInitialized(true)
+      } catch (error) {
+        console.error('Failed to load initial values:', error)
+        // 设置默认值
+        setCount(0)
+        setIsEven(true)
+        setIsInitialized(true)
+      }
+    }, 100)
 
-      setCount((initialCount as number) || 0)
-      setIsEven((initialIsEven as boolean) || false)
-    }
-
-    loadInitialValues()
-
-    // 清理监听器
+    // 清理函数
     return () => {
+      clearTimeout(initTimer)
       unsubscribers.forEach((unsubscribe) => unsubscribe())
     }
   }, [onPropertyChange, getProp])
 
   // 各种操作处理函数
   const handleIncrement = (): void => {
-    executeAction('increment')
+    try {
+      executeAction('increment')
+    } catch (error) {
+      console.error('Failed to increment:', error)
+    }
   }
+
   const handleDecrement = (): void => {
-    executeAction('decrement')
+    try {
+      executeAction('decrement')
+    } catch (error) {
+      console.error('Failed to decrement:', error)
+    }
   }
+
   const handleReset = (): void => {
-    executeAction('reset')
+    try {
+      executeAction('reset')
+    } catch (error) {
+      console.error('Failed to reset:', error)
+    }
   }
+
   const handleAddCustom = (): void => {
-    executeAction('addNumber', customValue)
+    try {
+      executeAction('addNumber', customValue)
+    } catch (error) {
+      console.error('Failed to add custom value:', error)
+    }
+  }
+
+  // 显示加载状态
+  if (!isInitialized) {
+    return (
+      <div
+        style={{
+          padding: '20px',
+          maxWidth: '700px',
+          margin: '0 auto',
+          fontFamily: 'Arial, sans-serif',
+          textAlign: 'center'
+        }}
+      >
+        <div
+          style={{
+            background: '#f3f4f6',
+            borderRadius: '12px',
+            padding: '40px',
+            color: '#6b7280'
+          }}
+        >
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>🔄</div>
+          <p>正在初始化ViewModel...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -109,6 +176,12 @@ const CounterView: React.FC = () => {
               cursor: 'pointer',
               transition: 'all 0.2s'
             }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#2563eb'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#3b82f6'
+            }}
           >
             + 增加
           </button>
@@ -125,6 +198,12 @@ const CounterView: React.FC = () => {
               borderRadius: '8px',
               cursor: 'pointer',
               transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#dc2626'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#ef4444'
             }}
           >
             - 减少
@@ -143,8 +222,14 @@ const CounterView: React.FC = () => {
               cursor: 'pointer',
               transition: 'all 0.2s'
             }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#4b5563'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#6b7280'
+            }}
           >
-            🔄 重置
+            重置
           </button>
         </div>
 
@@ -188,8 +273,14 @@ const CounterView: React.FC = () => {
               cursor: 'pointer',
               transition: 'all 0.2s'
             }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#7c3aed'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#8b5cf6'
+            }}
           >
-            ➕ 添加
+            添加
           </button>
         </div>
       </div>

@@ -2,127 +2,116 @@
  * @Author: Nana5aki
  * @Date: 2025-06-01 22:27:18
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-02 10:58:02
+ * @LastEditTime: 2025-06-07 14:52:55
  * @FilePath: \life_view\src\renderer\hooks\useMVVM.ts
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { MVVMResponse, PropertyChangeEvent } from '../types'
+
+interface ViewModelInstance {
+  getProp(propName: string): unknown
+  addPropertyListener(
+    propName: string,
+    callback: (changeInfo: { propName: string; value: unknown }) => void
+  ): void
+  action(actionName: string, param?: unknown): void
+}
 
 interface UseMVVMReturn {
-  executeAction: (actionName: string, ...args: unknown[]) => Promise<unknown>
-  getProp: (propName: string) => Promise<unknown>
+  executeAction: (actionName: string, ...args: unknown[]) => void
+  getProp: (propName: string) => unknown
   onPropertyChange: (propName: string, callback: (value: unknown) => void) => () => void
 }
 
 export function useMVVM(viewModelType: string): UseMVVMReturn {
-  const [instanceId, setInstanceId] = useState<string>()
+  const [viewModelInstance, setViewModelInstance] = useState<ViewModelInstance | null>(null)
   const mountedRef = useRef(true)
-  const listenedPropsRef = useRef(new Set<string>())
-  const callbacksRef = useRef(new Map<string, Set<(value: unknown) => void>>())
 
-  // 初始化ViewModel
+  // 初始化ViewModel - 直接调用C++接口
   useEffect(() => {
     mountedRef.current = true
-    const listenedProps = listenedPropsRef.current
-    const callbacks = callbacksRef.current
 
-    const init = async (): Promise<void> => {
-      const result = (await window.electron.ipcRenderer.invoke(
-        'mvvm:createViewModel',
-        viewModelType
-      )) as MVVMResponse
-      if (!result.success) throw new Error(result.error)
-      if (mountedRef.current) setInstanceId(result.instanceId)
-    }
+    try {
+      // 检查 window.api 是否存在
+      if (!window.api?.mvvm?.createViewModel) {
+        throw new Error('C++ MVVM api not loaded')
+      }
 
-    init()
+      const instance = window.api.mvvm.createViewModel(viewModelType)
 
-    return () => {
-      mountedRef.current = false
-      listenedProps.clear()
-      callbacks.clear()
-    }
-  }, [viewModelType])
-
-  // 清理ViewModel
-  useEffect(() => {
-    if (!instanceId) return
-    return () => {
-      window.electron.ipcRenderer.invoke('mvvm:removeViewModel', instanceId)
-    }
-  }, [instanceId])
-
-  // 监听属性变化
-  useEffect(() => {
-    if (!instanceId) return
-
-    const handleChange = (_: unknown, ...args: unknown[]): void => {
-      const event = args[0] as PropertyChangeEvent
-      if (event.instanceId === instanceId && mountedRef.current) {
-        const callbacks = callbacksRef.current.get(event.propName)
-        if (callbacks) {
-          callbacks.forEach((cb) => cb(event.value))
-        }
+      if (mountedRef.current) {
+        setViewModelInstance(instance)
+      }
+    } catch (error) {
+      console.error('useMVVM: ViewModel create failed:', error)
+      if (mountedRef.current) {
+        setViewModelInstance(null)
       }
     }
 
-    window.electron.ipcRenderer.on('mvvm:propertyChanged', handleChange)
-    return () => window.electron.ipcRenderer.removeListener('mvvm:propertyChanged', handleChange)
-  }, [instanceId])
+    return () => {
+      mountedRef.current = false
+    }
+  }, [viewModelType])
 
   const executeAction = useCallback(
-    async (actionName: string, ...args: unknown[]) => {
-      if (!instanceId) throw new Error('viewmodel not init!')
-      const result = (await window.electron.ipcRenderer.invoke(
-        'mvvm:executeAction',
-        instanceId,
-        actionName,
-        ...args
-      )) as MVVMResponse
-      if (!result.success) throw new Error(result.error)
-      return result.result
+    (actionName: string, ...args: unknown[]) => {
+      if (!viewModelInstance) {
+        console.error('useMVVM: ViewModel not init')
+        return
+      }
+
+      try {
+        if (args.length > 0) {
+          viewModelInstance.action(actionName, args[0])
+        } else {
+          viewModelInstance.action(actionName)
+        }
+      } catch (error) {
+        console.error('useMVVM: execute action failed:', actionName, error)
+      }
     },
-    [instanceId]
+    [viewModelInstance]
   )
 
   const getProp = useCallback(
-    async (propName: string) => {
-      if (!instanceId) throw new Error('viewmodel not init!')
-      const result = (await window.electron.ipcRenderer.invoke(
-        'mvvm:getProp',
-        instanceId,
-        propName
-      )) as MVVMResponse
-      if (!result.success) throw new Error(result.error)
-      return result.result
+    (propName: string) => {
+      if (!viewModelInstance) {
+        console.error('useMVVM: ViewModel not init')
+        return undefined
+      }
+
+      try {
+        const value = viewModelInstance.getProp(propName)
+        return value
+      } catch (error) {
+        console.error('useMVVM: get prop failed:', propName, error)
+        return undefined
+      }
     },
-    [instanceId]
+    [viewModelInstance]
   )
 
   const onPropertyChange = useCallback(
     (propName: string, callback: (value: unknown) => void) => {
-      let callbacks = callbacksRef.current.get(propName)
-      if (!callbacks) {
-        callbacks = new Set()
-        callbacksRef.current.set(propName, callbacks)
-      }
-      callbacks.add(callback)
-
-      // 添加监听器
-      if (instanceId && !listenedPropsRef.current.has(propName)) {
-        window.electron.ipcRenderer.invoke('mvvm:addPropertyListener', instanceId, propName)
-        listenedPropsRef.current.add(propName)
+      if (!viewModelInstance) {
+        console.error('useMVVM: ViewModel not init')
+        return () => {}
       }
 
-      return () => {
-        const callbacks = callbacksRef.current.get(propName)
-        if (callbacks) {
-          callbacks.delete(callback)
-          if (callbacks.size === 0) callbacksRef.current.delete(propName)
-        }
+      // 为这个属性添加监听器
+      try {
+        viewModelInstance.addPropertyListener(propName, (changeInfo) => {
+          if (mountedRef.current) {
+            callback(changeInfo.value)
+          }
+        })
+      } catch (error) {
+        console.error('useMVVM: add prop listener failed:', propName, error)
       }
+
+      return () => {}
     },
-    [instanceId]
+    [viewModelInstance]
   )
 
   return { executeAction, getProp, onPropertyChange }

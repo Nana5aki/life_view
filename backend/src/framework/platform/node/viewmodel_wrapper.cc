@@ -67,19 +67,18 @@ Napi::Value ViewModelWrapper::AddPropertyListener(const Napi::CallbackInfo& info
   std::string propName = info[0].As<Napi::String>().Utf8Value();
   Napi::Function callback = info[1].As<Napi::Function>();
 
-  property_changed_callback_ = Napi::Persistent(callback);
-
-  // Add listener to ViewModel
-  viewmodel_->AddPropertyListener(propName,
-                                  [this, propName](const std::string& prop, const Variant& value) {
-                                    if (!property_changed_callback_.IsEmpty()) {
-                                      Napi::Env env = property_changed_callback_.Env();
-                                      Napi::Object change_info = Napi::Object::New(env);
-                                      change_info.Set("propName", Napi::String::New(env, prop));
-                                      change_info.Set("value", VariantToNValue(value, env));
-                                      property_changed_callback_.Call({change_info});
-                                    }
-                                  });
+  property_changed_callbacks_[propName] = Napi::Persistent(callback);
+  viewmodel_->AddPropertyListener(
+    propName, [this, propName](const std::string& prop, const Variant& value) {
+      auto it = property_changed_callbacks_.find(propName);
+      if (it != property_changed_callbacks_.end() && !it->second.IsEmpty()) {
+        Napi::Env env = it->second.Env();
+        Napi::Object change_info = Napi::Object::New(env);
+        change_info.Set("propName", Napi::String::New(env, prop));
+        change_info.Set("value", VariantToNValue(value, env));
+        it->second.Call({change_info});
+      }
+    });
 
   return env.Undefined();
 }
