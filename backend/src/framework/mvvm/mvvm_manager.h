@@ -2,7 +2,7 @@
  * @Author: Nana5aki
  * @Date: 2025-05-31 21:57:27
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-01 16:18:31
+ * @LastEditTime: 2025-06-14 16:21:29
  * @FilePath: \life_view\backend\src\framework\mvvm\mvvm_manager.h
  */
 #pragma once
@@ -24,18 +24,14 @@ public:
 
   std::shared_ptr<framework::ViewModel> createViewModel(const std::string& viewmodel_type);
 
-  void registerViewModelFactory(
-    const std::string& viewmodel_type,
-    std::function<std::shared_ptr<framework::ViewModel>(const std::string&)> factory);
+  void registerViewModelFactory(const std::string& viewmodel_type,
+                                std::function<std::shared_ptr<framework::ViewModel>()> factory);
 
 private:
   MVVMManager() = default;
 
-  std::string generateViewId(const std::string& viewmodel_type);
-
 private:
   static MVVMManager* instance_;
-  std::map<std::string, std::function<std::shared_ptr<framework::ViewModel>(const std::string&)>>
+  std::map<std::string, std::function<std::shared_ptr<framework::ViewModel>()>>
     viewmodel_factories_;
-  int next_view_id_ = 1;
 };

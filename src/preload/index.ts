@@ -2,39 +2,38 @@
  * @Author: Nana5aki
  * @Date: 2025-05-30 21:21:48
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-07 12:01:58
+ * @LastEditTime: 2025-06-15 17:45:35
  * @FilePath: \life_view\src\preload\index.ts
  */
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // 动态加载C++模块
-const requireFunc = eval('require')
-const mvvmNative = requireFunc('../../backend/build/Release/life_view_backend.node')
+const RequireFunc = eval('require')
+const MVVMNative = RequireFunc('../../backend/build/Release/life_view_backend.node')
 
 // Custom APIs for renderer - 创建ViewModel包装器
 const api = {
   mvvm: {
-    createViewModel: (type: string) => {
-      console.log('创建 ViewModel:', type)
+    CreateViewModel: (type: string) => {
       try {
-        const nativeInstance = mvvmNative.createViewModel(type)
+        const native_instance = MVVMNative.createViewModel(type)
         // 创建一个包装器对象，显式暴露方法
         const wrapper = {
-          getProp: (propName: string) => {
-            return nativeInstance.getProp(propName)
+          GetProp: (propName: string) => {
+            return native_instance.GetProp(propName)
           },
-          addPropertyListener: (
-            propName: string,
-            callback: (changeInfo: { propName: string; value: unknown }) => void
+          BindProperty: (
+            prop_name: string,
+            callback: (ChangeInfo: { prop_name: string; value: unknown }) => void
           ) => {
-            return nativeInstance.addPropertyListener(propName, callback)
+            return native_instance.BindProperty(prop_name, callback)
           },
-          action: (actionName: string, param?: unknown) => {
+          ExcuteCommand: (command_name: string, param?: unknown) => {
             if (param !== undefined) {
-              return nativeInstance.action(actionName, param)
+              return native_instance.ExcuteCommand(command_name, param)
             } else {
-              return nativeInstance.action(actionName)
+              return native_instance.ExcuteCommand(command_name)
             }
           }
         }

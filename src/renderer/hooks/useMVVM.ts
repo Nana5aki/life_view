@@ -2,27 +2,27 @@
  * @Author: Nana5aki
  * @Date: 2025-06-01 22:27:18
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-07 14:52:55
+ * @LastEditTime: 2025-06-15 17:49:41
  * @FilePath: \life_view\src\renderer\hooks\useMVVM.ts
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface ViewModelInstance {
-  getProp(propName: string): unknown
-  addPropertyListener(
-    propName: string,
-    callback: (changeInfo: { propName: string; value: unknown }) => void
+  GetProp(prop_name: string): unknown
+  BindProperty(
+    prop_name: string,
+    callback: (ChangeInfo: { prop_name: string; value: unknown }) => void
   ): void
-  action(actionName: string, param?: unknown): void
+  ExcuteCommand(command_name: string, param?: unknown): void
 }
 
 interface UseMVVMReturn {
-  executeAction: (actionName: string, ...args: unknown[]) => void
-  getProp: (propName: string) => unknown
-  onPropertyChange: (propName: string, callback: (value: unknown) => void) => () => void
+  ExcuteCommand: (command_name: string, ...args: unknown[]) => void
+  GetProp: (prop_name: string) => unknown
+  BindProperty: (prop_name: string, callback: (value: unknown) => void) => () => void
 }
 
-export function useMVVM(viewModelType: string): UseMVVMReturn {
+export function useMVVM(viewmodel_type: string): UseMVVMReturn {
   const [viewModelInstance, setViewModelInstance] = useState<ViewModelInstance | null>(null)
   const mountedRef = useRef(true)
 
@@ -32,11 +32,11 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
 
     try {
       // 检查 window.api 是否存在
-      if (!window.api?.mvvm?.createViewModel) {
+      if (!window.api?.mvvm?.CreateViewModel) {
         throw new Error('C++ MVVM api not loaded')
       }
 
-      const instance = window.api.mvvm.createViewModel(viewModelType)
+      const instance = window.api.mvvm.CreateViewModel(viewmodel_type)
 
       if (mountedRef.current) {
         setViewModelInstance(instance)
@@ -51,10 +51,10 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     return () => {
       mountedRef.current = false
     }
-  }, [viewModelType])
+  }, [viewmodel_type])
 
-  const executeAction = useCallback(
-    (actionName: string, ...args: unknown[]) => {
+  const ExcuteCommand = useCallback(
+    (command_name: string, ...args: unknown[]) => {
       if (!viewModelInstance) {
         console.error('useMVVM: ViewModel not init')
         return
@@ -62,37 +62,37 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
 
       try {
         if (args.length > 0) {
-          viewModelInstance.action(actionName, args[0])
+          viewModelInstance.ExcuteCommand(command_name, args[0])
         } else {
-          viewModelInstance.action(actionName)
+          viewModelInstance.ExcuteCommand(command_name)
         }
       } catch (error) {
-        console.error('useMVVM: execute action failed:', actionName, error)
+        console.error('useMVVM: execute command failed:', command_name, error)
       }
     },
     [viewModelInstance]
   )
 
-  const getProp = useCallback(
-    (propName: string) => {
+  const GetProp = useCallback(
+    (prop_name: string) => {
       if (!viewModelInstance) {
         console.error('useMVVM: ViewModel not init')
         return undefined
       }
 
       try {
-        const value = viewModelInstance.getProp(propName)
+        const value = viewModelInstance.GetProp(prop_name)
         return value
       } catch (error) {
-        console.error('useMVVM: get prop failed:', propName, error)
+        console.error('useMVVM: get prop failed:', prop_name, error)
         return undefined
       }
     },
     [viewModelInstance]
   )
 
-  const onPropertyChange = useCallback(
-    (propName: string, callback: (value: unknown) => void) => {
+  const BindProperty = useCallback(
+    (prop_name: string, callback: (value: unknown) => void) => {
       if (!viewModelInstance) {
         console.error('useMVVM: ViewModel not init')
         return () => {}
@@ -100,13 +100,13 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
 
       // 为这个属性添加监听器
       try {
-        viewModelInstance.addPropertyListener(propName, (changeInfo) => {
+        viewModelInstance.BindProperty(prop_name, (ChangeInfo) => {
           if (mountedRef.current) {
-            callback(changeInfo.value)
+            callback(ChangeInfo.value)
           }
         })
       } catch (error) {
-        console.error('useMVVM: add prop listener failed:', propName, error)
+        console.error('useMVVM: add prop listener failed:', prop_name, error)
       }
 
       return () => {}
@@ -114,5 +114,5 @@ export function useMVVM(viewModelType: string): UseMVVMReturn {
     [viewModelInstance]
   )
 
-  return { executeAction, getProp, onPropertyChange }
+  return { ExcuteCommand, GetProp, BindProperty }
 }

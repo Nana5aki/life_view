@@ -2,10 +2,9 @@
  * @Author: Nana5aki
  * @Date: 2025-05-31 21:20:15
  * @LastEditors: Nana5aki
- * @LastEditTime: 2025-06-01 18:03:29
- * @FilePath: \life_view\backend\src\mvvm_base.cc
+ * @LastEditTime: 2025-06-07 16:53:49
+ * @FilePath: \life_view\backend\src\framework\platform\node\mvvm_base.cc
  */
-#include "counter_example.h"
 #include "framework/mvvm/mvvm_manager.h"
 #include "framework/platform/node/viewmodel_wrapper.h"
 #include <iostream>
@@ -37,32 +36,26 @@ Napi::Value CreateViewModel(const Napi::CallbackInfo& info) {
   // 检查constructor是否已经初始化
   if (framework::ViewModelWrapper::constructor.IsEmpty()) {
     std::cout << "ViewModelWrapper constructor is not initialized!" << std::endl;
-    Napi::Error::New(env, "ViewModelWrapper constructor not initialized").ThrowAsJavaScriptException();
+    Napi::Error::New(env, "ViewModelWrapper constructor not initialized")
+      .ThrowAsJavaScriptException();
     return env.Undefined();
   }
 
-  // 生成viewId（由于ViewModel构造函数已经设置了view_id_，我们需要访问它）
-  // 但由于我们不能添加getViewId接口，我们需要从MVVMManager获取viewId
-  // 这里我们使用一个临时方案：重新生成相同的viewId
-  static int next_view_id = 1;
-  std::ostringstream oss;
-  oss << viewModelType << "_" << next_view_id++;
-  std::string viewId = oss.str();
 
   std::cout << "Creating wrapper instance with constructor..." << std::endl;
-  // Create and return wrapper
   auto wrapper = framework::ViewModelWrapper::constructor.New({});
   std::cout << "Wrapper instance created, unwrapping..." << std::endl;
-  
+
   framework::ViewModelWrapper* wrapperInstance = framework::ViewModelWrapper::Unwrap(wrapper);
   if (!wrapperInstance) {
     std::cout << "Failed to unwrap ViewModelWrapper instance!" << std::endl;
-    Napi::Error::New(env, "Failed to unwrap ViewModelWrapper instance").ThrowAsJavaScriptException();
+    Napi::Error::New(env, "Failed to unwrap ViewModelWrapper instance")
+      .ThrowAsJavaScriptException();
     return env.Undefined();
   }
-  
+
   std::cout << "Setting ViewModel on wrapper instance..." << std::endl;
-  wrapperInstance->SetViewModel(viewModel, viewId);
+  wrapperInstance->SetViewModel(viewModel);
 
   std::cout << "Wrapper created and ViewModel set, returning to JavaScript" << std::endl;
   return wrapper;
@@ -70,12 +63,9 @@ Napi::Value CreateViewModel(const Napi::CallbackInfo& info) {
 
 // Module initialization
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  // Initialize counter example
-  counter_example::InitCounterExample();
 
   // Initialize ViewModel wrapper class
   framework::ViewModelWrapper::Init(env, exports);
-
   // Export MVVM functions
   exports.Set("createViewModel", Napi::Function::New(env, CreateViewModel));
 
